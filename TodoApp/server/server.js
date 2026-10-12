@@ -1,75 +1,57 @@
 import express from 'express';
+import connectDB from './config/db.js';
+import Todo from './models/Todo.js';
+
 
 const app = express();
+connectDB();
 
 app.use(express.json());
 
-let todos= [
-
-    {
-        id:1,
-        text:"First task",
-        done: false
-    },
-
-    {
-        id:2,
-        text:"second task",
-        done: false
-    },
-
-
-];
-
 
 //getting all elements
-app.get('/api/todos', (req, res) => {
+app.get('/api/todos', async (req, res)=>{
+    const todos = await Todo.find();
     res.json(todos);
+}); 
 
-});
+
 
 //Adding new element
-app.post('/api/todos',(req, res)=>{
-
+app.post('/api/todos', async (req,res) => {
     const {text} = req.body;
-    const newTodos = {
-        id: todos.length + 1,
-        text,
-        done: false
-    };
-    todos.push(newTodos);
-    res.status(201).json(newTodos);
+    const newTodo = await Todo.create({text});
+    res.status(201).json(newTodo);
 });
-
 
 
 
 //A way to mark a specific todo as done
-app.patch('/api/todos/:id' , (req, res)=>{
+app.patch('/api/todos/:id', async (req, res) =>{
+    const todo = await Todo.findById(req.params.id);
 
-    const id = Number(req.params.id);
-    const todo = todos.find(t=> t.id === id);
+    if(!todo){
+        return res.status(404).json({error: "Todo not found"});
+    }
 
-        if (!todo) {
-            return res.status(404).json({error: "Todo not found"});
-        }
+    todo.done = !todo.done; //reversing the true to false and vice versa
+    await todo.save();
+    res.json(todo);
 
-        //make reverse the true or false
-        todo.done = !todo.done;
-        res.json(todo);
 });
 
 
 
 // Deleting the element
-app.delete('/api/todos/:id',(req,res)=>{
+app.delete('/api/todos/:id', async(req,res) => {
 
-    const id = Number(req.params.id);
+        const deleted = await Todo.findByIdAndDelete(req.params.id);
 
-    //exclude the selected and keep all unselected
-    todos = todos.filter(t => t.id !== id);
+        if(!deleted) {
+            return res.status(404).json({error: "!Todo not found"});  //If the element isn't found! 
+        }
 
-    res.status(204).send();
+        res.status(204).send();
 
 });
 
